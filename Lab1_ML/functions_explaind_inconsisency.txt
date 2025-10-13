@@ -1,0 +1,89 @@
+Awesome—here’s a clean checklist of every Python/pandas construct used in the garage-fix code, with what it does and why it’s there.
+
+# Core Python
+
+* **`isinstance(obj, cls)`**
+  Checks type. Used to see if a column’s dtype is `CategoricalDtype` before adding categories.
+* **`def func(...): ...`**
+  Defines a helper (`mode1`) to compute the mode safely.
+* **Logical operators `|`, `&`, `==`, `!=`, `>`, `<`**
+  Elementwise boolean logic on pandas Series to build masks (filters).
+* **List literals `['a','b']`**
+  To iterate over specific columns: `['Garage Finish','Garage Qual','Garage Cond']`.
+
+# Pandas: DataFrame/Series selection & assignment
+
+* **`df['col']`**
+  Select a column (returns a Series).
+* **`df.loc[mask, col_or_cols] = values`**
+  Assign **only** where `mask` is True. Used to fill inconsistent rows.
+* **`df[col] = ...`**
+  Overwrite an entire column (e.g., set `GarageLabelsImputed`).
+* **`df[mask]`**
+  Filter rows by boolean mask (creates a view/copy for inspection).
+* **`df.copy()`** *(not used here, but relevant)*
+  Would create a copy if you needed to avoid modifying original.
+
+# Pandas: Missing values & simple transforms
+
+* **`Series.fillna(value)`**
+  Replace NaN with a value (e.g., treat missing `Garage Area/Cars` as 0 during checks).
+* **`Series.isna()` / `Series.notna()`**
+  Boolean mask for missing/non-missing entries.
+* **`Series.map(mapping_or_func)`**
+  Map each value using a dict/Series/function. Here, `Garage Type` → per-type **mode** value for a label.
+
+# Pandas: Grouping & aggregation
+
+* **`df[mask].groupby('Garage Type')[cols].agg(func)`**
+  Group houses-with-garage by type and compute an aggregate per column.
+  Why: get the **typical** (`mode1`) `Finish/Qual/Cond` **for each type** (e.g., `Detchd`).
+* **`Series.mode(dropna=True)`** *(inside `mode1`)*
+  Returns the most frequent value(s). We take `.iloc[0]` to get a single value.
+* **`GroupBy.median()`**
+  Compute the median per group (used to impute numeric gaps for `Garage Area` / `Garage Cars`).
+
+# Pandas: Categorical dtype
+
+* **`pd.CategoricalDtype`** (type object)
+  Used with `isinstance(df[col].dtype, pd.CategoricalDtype)` to detect categorical columns.
+* **`Series.cat.add_categories(list)`**
+  Add new allowed category labels before assigning them (avoids errors).
+  Why: the mode you’re about to write (e.g., `'Unf'`, `'TA'`) **must** exist in the category list.
+* **`Series.astype(pd.CategoricalDtype(...))`** *(not used here, but related)*
+  Would set/lock an ordered set of categories.
+
+# Pandas: Index helpers
+
+* **`pd.Index(values)`**
+  Wraps a sequence into an Index for set-like ops.
+* **`Index.unique()`**
+  Distinct values (used to collect unique fill-in categories).
+* **`Index.difference(other_index)`**
+  Set difference to find which categories are **missing** in the current categorical column.
+
+# Pandas: Mask building (vectorized logic)
+
+* **`(df['Garage Type'] != 'NoGarage') | (df['Garage Area'].fillna(0) > 0) | (df['Garage Cars'].fillna(0) > 0)`**
+  → `has_gar`: marks rows that **clearly** have a garage (by type or by numeric evidence).
+* **`to_fix = has_gar & ((Finish=='NoGarage') | (Qual=='NoGarage') | (Cond=='NoGarage'))`**
+  Rows with garage but wrongly labeled as absent.
+
+# Pandas: Counting / summary
+
+* **`mask.sum()`**
+  For boolean Series, sums `True` values → count of rows matching (used for “Remaining inconsistencies”).
+* **`print(...)`**
+  Just displays results.
+
+# Why each step matters (the logic)
+
+1. **Build `has_gar`** → robust definition of “there is a garage” (type or numeric evidence).
+2. **Compute per-type modes** → realistic default **labels** (`Finish/Qual/Cond`) for each garage type.
+3. **Find `to_fix`** → rows where labels contradict the existence of a garage.
+4. **Ensure categories exist** → avoid assignment errors on categorical columns.
+5. **Assign per-type typical labels** only where needed (`NoGarage` / NaN).
+6. **Impute numeric gaps** (`Area/Cars`) with **per-type medians** (optional but sensible).
+7. **Revalidate** → confirm inconsistencies are gone.
+
+If vrei, îți pot adăuga și un mini-diagram al fluxului (mask → groupby-mode → map → assign → recheck), dar astea sunt toate funcțiile și motivele lor.
