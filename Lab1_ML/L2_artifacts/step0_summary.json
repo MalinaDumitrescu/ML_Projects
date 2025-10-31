@@ -1,0 +1,27 @@
+{
+  "random_state": 42,
+  "scenario_A": {
+    "train_shape": [
+      2213,
+      89
+    ],
+    "test_shape": [
+      554,
+      89
+    ],
+    "n_features": 89,
+    "rows_after_temporal_filters": 2767
+  },
+  "scenario_B": {
+    "train_shape": [
+      2490,
+      89
+    ],
+    "test_shape": [
+      277,
+      89
+    ],
+    "n_features": 89,
+    "rows_after_temporal_filters": 2767
+  }
+}
