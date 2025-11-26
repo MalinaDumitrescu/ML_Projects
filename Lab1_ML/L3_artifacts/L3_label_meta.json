@@ -1,6 +1,6 @@
 {
   "label_name": "PriceClass",
   "interval_col": "PriceClassInterval",
-  "n_bins": 5,
+  "n_bins": 8,
   "note": "Bins computed on TRAIN only; applied to TEST without refit."
 }
